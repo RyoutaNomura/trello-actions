@@ -1,0 +1,11 @@
+name: "Trello Card Updater"
+description: "Update Trello Card according to Pull Request's Status"
+inputs:
+  target-action-name:
+    description: 'action name for trello operation'
+    required: true
+runs:
+  using: 'node12'
+  main: 'index.js'
+
+
