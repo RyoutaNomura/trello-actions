@@ -13,4 +13,8 @@ jobs:
         uses: ./ # Uses an action in the root directory
         id: hello
         with:
-          target-action-name: 'Mona the Octocat'
+          target-action-name: 'attach-pr-to-card'
+          board-id: '5f295471389a00455867bc20'
+        env:
+          TRELLO_API_KEY: ${{secrets.TRELLO_API_KEY}}
+          TRELLO_API_TOKEN: ${{secrets.TRELLO_API_TOKEN}}

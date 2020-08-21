@@ -4,6 +4,9 @@ inputs:
   target-action-name:
     description: 'action name for trello operation'
     required: true
+  board-id:
+    description: 'target bord id'
+    required: true
 runs:
   using: 'node12'
   main: './dist/index.js'
