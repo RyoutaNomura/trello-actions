@@ -29,7 +29,6 @@ const log4js_1 = __importDefault(require("log4js"));
 const logger = log4js_1.default.getLogger();
 logger.level = "all";
 const resolveTrelloUrlFrom = (text) => {
-    logger.info(text);
     if (text) {
         return text.match(/https:\/\/trello\.com\/c\/.*/g) || [];
     }
@@ -56,7 +55,49 @@ const createTrelloContext = () => {
         boardId,
     };
 };
-const attachPrToCard = (trelloContext, trelloUrls, prUrl) => {
+const getAttachmentsOnACard = async (trelloContext, trelloCardId) => {
+    const url = new URL(`https://trello.com/1/cards/${trelloCardId}/attachments`);
+    url.search = new URLSearchParams({
+        key: trelloContext.apiKey,
+        token: trelloContext.apiToken,
+    }).toString();
+    const response = await node_fetch_1.default(url);
+    if (!response.ok) {
+        throw new Error(`cannot get card's attachments: ${trelloCardId} with response: ${await response.text()}`);
+    }
+    return await response.json();
+};
+const createAttachmentOnCard = async (trelloContext, id, url) => {
+    const res = await node_fetch_1.default(`https://trello.com/1/cards/${id}/attachments`, {
+        method: "POST",
+        body: new URLSearchParams({
+            key: trelloContext.apiKey,
+            token: trelloContext.apiToken,
+            url: url,
+        }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        throw new Error(`error occurred while updating ${id} with response: ${text}`);
+    }
+    logger.info(`successfully updated ${id}`);
+};
+const updateACard = async (trelloContext, id, idList) => {
+    const res = await node_fetch_1.default(`https://trello.com/1/cards/${id}`, {
+        method: "PUT",
+        body: new URLSearchParams({
+            key: trelloContext.apiKey,
+            token: trelloContext.apiToken,
+            idList: idList,
+        }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        throw new Error(`error occurred while updating ${id} with response: ${text}`);
+    }
+    logger.info(`successfully updated ${id}`);
+};
+const attachPrToCard = async (trelloContext, trelloUrls, prUrl) => {
     if (trelloUrls.length === 0) {
         logger.info("target card not fount");
         return;
@@ -65,33 +106,34 @@ const attachPrToCard = (trelloContext, trelloUrls, prUrl) => {
     if (!prUrl) {
         throw new Error("pull-request url is not defined");
     }
-    trelloUrls.forEach((url) => {
+    Promise.all(trelloUrls.map(async (url) => {
         const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
             new Array(2))[1];
-        logger.info(`Attaching github url to card: ${cardId}`);
-        node_fetch_1.default(`https://trello.com/1/cards/${cardId}/attachments`, {
-            method: "POST",
-            body: new URLSearchParams({
-                key: trelloContext.apiKey,
-                token: trelloContext.apiToken,
-                url: prUrl,
-            }),
-        })
-            .then((r) => {
-            r.text().then((text) => logger.info(`response: ${text}`));
-            if (!r.ok) {
-                throw new Error(`error occurred while updating ${url}`);
-            }
-            logger.info(`successfully updated ${url}`);
-        })
-            .catch((error) => {
-            logger.info(`error: ${error}`);
-            throw error;
-        });
-    });
+        const attachments = await getAttachmentsOnACard(trelloContext, cardId);
+        if (attachments.findIndex((a) => a.url === prUrl) > -1) {
+            logger.info(`${prUrl} is already attached to ${cardId}`);
+            logger.info(`skipped updating ${cardId}`);
+        }
+        else {
+            logger.info(`attaching github url to card: ${cardId}`);
+            createAttachmentOnCard(trelloContext, cardId, prUrl);
+        }
+    }));
 };
-const moveCard = (trelloContext, trelloUrls, destListId) => {
-    logger.info("hoge");
+const moveCard = async (trelloContext, trelloUrls, destListId) => {
+    if (trelloUrls.length === 0) {
+        logger.info("target card not fount");
+        return;
+    }
+    logger.info(`target cards: ${trelloUrls}`);
+    if (!destListId) {
+        throw new Error("dest-list-id is not defined");
+    }
+    Promise.all(trelloUrls.map(async (url) => {
+        const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
+            new Array(2))[1];
+        updateACard(trelloContext, cardId, destListId);
+    }));
 };
 try {
     const targetActionName = core.getInput("target-action-name");

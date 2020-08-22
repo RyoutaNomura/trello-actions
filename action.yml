@@ -5,8 +5,11 @@ inputs:
     description: 'action name for trello operation'
     required: true
   board-id:
-    description: 'target bord id'
+    description: 'target trello bord id'
     required: true
+  list-id-containing-completed-cards:
+    description: 'trello list id where completed cards are stored'
+    required: false
 runs:
   using: 'node12'
   main: './dist/index.js'
