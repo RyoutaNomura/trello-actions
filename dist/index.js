@@ -144,7 +144,7 @@ try {
                 attachPrToCard(createTrelloContext(), resolveTrelloUrlFrom(github.context.payload.pull_request.body), github.context.payload.pull_request.html_url);
                 break;
             case "move-card":
-                moveCard(createTrelloContext(), resolveTrelloUrlFrom(github.context.payload.pull_request.body), core.getInput("dest-list-id"));
+                moveCard(createTrelloContext(), resolveTrelloUrlFrom(github.context.payload.pull_request.body), core.getInput("list-id-containing-completed-cards"));
                 break;
             default:
                 throw new Error(`target action name cannot be resolved: ${targetActionName}`);

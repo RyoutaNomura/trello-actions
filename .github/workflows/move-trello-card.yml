@@ -1,0 +1,22 @@
+on: 
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  move-card-after-merged:
+    runs-on: ubuntu-latest
+    steps:
+      # To use this repository's private action,
+      # you must check out the repository
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Trello action
+        uses: ./ # Uses an action in the root directory
+        with:
+          target-action-name: 'move-card'
+          board-id: '5f295471389a00455867bc20'
+          list-id-containing-completed-cards: '5f2c2f6923d2c76180efd70c'
+        env:
+          TRELLO_API_KEY: ${{secrets.TRELLO_API_KEY}}
+          TRELLO_API_TOKEN: ${{secrets.TRELLO_API_TOKEN}}

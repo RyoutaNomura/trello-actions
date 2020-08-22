@@ -191,7 +191,7 @@ try {
         moveCard(
           createTrelloContext(),
           resolveTrelloUrlFrom(github.context.payload.pull_request.body),
-          core.getInput("dest-list-id")
+          core.getInput("list-id-containing-completed-cards")
         );
         break;
       default:
