@@ -107,6 +107,7 @@ const updateACard = async (
       key: trelloContext.apiKey,
       token: trelloContext.apiToken,
       idList: idList,
+      pos: "top",
     }),
   });
   const text = await res.text();
