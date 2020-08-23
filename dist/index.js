@@ -3284,7 +3284,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(470));
 const github = __importStar(__webpack_require__(469));
-const node_fetch_1 = __importDefault(__webpack_require__(454));
+const TrelloApi = __importStar(__webpack_require__(522));
 const log4js_1 = __importDefault(__webpack_require__(971));
 const logger = log4js_1.default.getLogger();
 logger.level = "all";
@@ -3315,49 +3315,6 @@ const createTrelloContext = () => {
         boardId,
     };
 };
-const getAttachmentsOnACard = async (trelloContext, trelloCardId) => {
-    const url = new URL(`https://trello.com/1/cards/${trelloCardId}/attachments`);
-    url.search = new URLSearchParams({
-        key: trelloContext.apiKey,
-        token: trelloContext.apiToken,
-    }).toString();
-    const response = await node_fetch_1.default(url);
-    if (!response.ok) {
-        throw new Error(`cannot get card's attachments: ${trelloCardId} with response: ${await response.text()}`);
-    }
-    return await response.json();
-};
-const createAttachmentOnCard = async (trelloContext, id, url) => {
-    const res = await node_fetch_1.default(`https://trello.com/1/cards/${id}/attachments`, {
-        method: "POST",
-        body: new URLSearchParams({
-            key: trelloContext.apiKey,
-            token: trelloContext.apiToken,
-            url: url,
-        }),
-    });
-    const text = await res.text();
-    if (!res.ok) {
-        throw new Error(`error occurred while updating ${id} with response: ${text}`);
-    }
-    logger.info(`successfully updated ${id}`);
-};
-const updateACard = async (trelloContext, id, idList) => {
-    const res = await node_fetch_1.default(`https://trello.com/1/cards/${id}`, {
-        method: "PUT",
-        body: new URLSearchParams({
-            key: trelloContext.apiKey,
-            token: trelloContext.apiToken,
-            idList: idList,
-            pos: "top",
-        }),
-    });
-    const text = await res.text();
-    if (!res.ok) {
-        throw new Error(`error occurred while updating ${id} with response: ${text}`);
-    }
-    logger.info(`successfully updated ${id}`);
-};
 const attachPrToCard = async (trelloContext, trelloUrls, prUrl) => {
     if (trelloUrls.length === 0) {
         logger.info("target card not fount");
@@ -3370,14 +3327,14 @@ const attachPrToCard = async (trelloContext, trelloUrls, prUrl) => {
     Promise.all(trelloUrls.map(async (url) => {
         const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
             new Array(2))[1];
-        const attachments = await getAttachmentsOnACard(trelloContext, cardId);
+        const attachments = await TrelloApi.getAttachmentsOnACard(trelloContext, cardId);
         if (attachments.findIndex((a) => a.url === prUrl) > -1) {
             logger.info(`${prUrl} is already attached to ${cardId}`);
             logger.info(`skipped updating ${cardId}`);
         }
         else {
             logger.info(`attaching github url to card: ${cardId}`);
-            createAttachmentOnCard(trelloContext, cardId, prUrl);
+            TrelloApi.createAttachmentOnCard(trelloContext, cardId, { url: prUrl });
         }
     }));
 };
@@ -3393,7 +3350,7 @@ const moveCard = async (trelloContext, trelloUrls, destListId) => {
     Promise.all(trelloUrls.map(async (url) => {
         const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
             new Array(2))[1];
-        updateACard(trelloContext, cardId, destListId);
+        TrelloApi.updateACard(trelloContext, cardId, { idList: destListId });
     }));
 };
 try {
@@ -7670,6 +7627,67 @@ function getOctokitOptions(token, options) {
 }
 exports.getOctokitOptions = getOctokitOptions;
 //# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 522:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateACard = exports.createAttachmentOnCard = exports.getAttachmentsOnACard = void 0;
+const node_fetch_1 = __importDefault(__webpack_require__(454));
+const log4js_1 = __importDefault(__webpack_require__(971));
+const logger = log4js_1.default.getLogger();
+logger.level = "all";
+exports.getAttachmentsOnACard = async (trelloContext, id) => {
+    const url = new URL(`https://trello.com/1/cards/${id}/attachments`);
+    url.search = new URLSearchParams({
+        key: trelloContext.apiKey,
+        token: trelloContext.apiToken,
+    }).toString();
+    const response = await node_fetch_1.default(url);
+    if (!response.ok) {
+        throw new Error(`error occurred while requesting ${id} with response: ${await response.text()}`);
+    }
+    return await response.json();
+};
+exports.createAttachmentOnCard = async (trelloContext, id, params) => {
+    const url = new URL(`https://trello.com/1/cards/${id}/attachments`);
+    const response = await node_fetch_1.default(url, {
+        method: "POST",
+        body: new URLSearchParams({
+            key: trelloContext.apiKey,
+            token: trelloContext.apiToken,
+            url: params.url,
+        }),
+    });
+    if (!response.ok) {
+        throw new Error(`error occurred while updating ${id} with response: ${await response.text()}`);
+    }
+    logger.info(`successfully updated ${id}`);
+};
+exports.updateACard = async (trelloContext, id, params) => {
+    const res = await node_fetch_1.default(`https://trello.com/1/cards/${id}`, {
+        method: "PUT",
+        body: new URLSearchParams({
+            key: trelloContext.apiKey,
+            token: trelloContext.apiToken,
+            idList: params.idList,
+            pos: "top",
+        }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        throw new Error(`error occurred while updating ${id} with response: ${text}`);
+    }
+    logger.info(`successfully updated ${id}`);
+};
+
 
 /***/ }),
 

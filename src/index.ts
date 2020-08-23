@@ -1,30 +1,10 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import fetch from "node-fetch";
+import * as TrelloApi from "./trello-api";
 import log4js from "log4js";
 
 const logger = log4js.getLogger();
 logger.level = "all";
-
-interface TrelloContext {
-  apiKey: string;
-  apiToken: string;
-  boardId: string;
-}
-
-interface Attachment {
-  id: string;
-  btyes: string;
-  date: string;
-  edgeColor: string;
-  idMember: string;
-  isUpload: boolean;
-  mimeType: string;
-  name: string;
-  previews: Array<string>;
-  url: string;
-  pos: number;
-}
 
 const resolveTrelloUrlFrom = (text?: string): Array<string> => {
   if (text) {
@@ -34,7 +14,7 @@ const resolveTrelloUrlFrom = (text?: string): Array<string> => {
   }
 };
 
-const createTrelloContext = () => {
+const createTrelloContext = (): TrelloApi.TrelloContext => {
   const apiKey = process.env["TRELLO_API_KEY"];
   const apiToken = process.env["TRELLO_API_TOKEN"];
   const boardId = core.getInput("board-id");
@@ -55,72 +35,8 @@ const createTrelloContext = () => {
   };
 };
 
-const getAttachmentsOnACard = async (
-  trelloContext: TrelloContext,
-  trelloCardId: string
-): Promise<Array<Attachment>> => {
-  const url = new URL(`https://trello.com/1/cards/${trelloCardId}/attachments`);
-  url.search = new URLSearchParams({
-    key: trelloContext.apiKey,
-    token: trelloContext.apiToken,
-  }).toString();
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `cannot get card's attachments: ${trelloCardId} with response: ${await response.text()}`
-    );
-  }
-  return await response.json();
-};
-
-const createAttachmentOnCard = async (
-  trelloContext: TrelloContext,
-  id: string,
-  url: string
-) => {
-  const res = await fetch(`https://trello.com/1/cards/${id}/attachments`, {
-    method: "POST",
-    body: new URLSearchParams({
-      key: trelloContext.apiKey,
-      token: trelloContext.apiToken,
-      url: url,
-    }),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(
-      `error occurred while updating ${id} with response: ${text}`
-    );
-  }
-  logger.info(`successfully updated ${id}`);
-};
-
-const updateACard = async (
-  trelloContext: TrelloContext,
-  id: string,
-  idList: string
-) => {
-  const res = await fetch(`https://trello.com/1/cards/${id}`, {
-    method: "PUT",
-    body: new URLSearchParams({
-      key: trelloContext.apiKey,
-      token: trelloContext.apiToken,
-      idList: idList,
-      pos: "top",
-    }),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(
-      `error occurred while updating ${id} with response: ${text}`
-    );
-  }
-  logger.info(`successfully updated ${id}`);
-};
-
 const attachPrToCard = async (
-  trelloContext: TrelloContext,
+  trelloContext: TrelloApi.TrelloContext,
   trelloUrls: Array<string>,
   prUrl?: string
 ): Promise<void> => {
@@ -139,20 +55,23 @@ const attachPrToCard = async (
       const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
         new Array(2))[1];
 
-      const attachments = await getAttachmentsOnACard(trelloContext, cardId);
+      const attachments = await TrelloApi.getAttachmentsOnACard(
+        trelloContext,
+        cardId
+      );
       if (attachments.findIndex((a) => a.url === prUrl) > -1) {
         logger.info(`${prUrl} is already attached to ${cardId}`);
         logger.info(`skipped updating ${cardId}`);
       } else {
         logger.info(`attaching github url to card: ${cardId}`);
-        createAttachmentOnCard(trelloContext, cardId, prUrl);
+        TrelloApi.createAttachmentOnCard(trelloContext, cardId, {url:prUrl});
       }
     })
   );
 };
 
 const moveCard = async (
-  trelloContext: TrelloContext,
+  trelloContext: TrelloApi.TrelloContext,
   trelloUrls: Array<string>,
   destListId: string
 ): Promise<void> => {
@@ -170,7 +89,7 @@ const moveCard = async (
     trelloUrls.map(async (url) => {
       const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
         new Array(2))[1];
-      updateACard(trelloContext, cardId, destListId);
+      TrelloApi.updateACard(trelloContext, cardId, {idList:destListId});
     })
   );
 };
