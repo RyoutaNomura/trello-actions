@@ -66,8 +66,15 @@ jobs:
         uses: RyoutaNomura/trello-actions@v0.1
         with:
           target-action-name: 'move-card'
-          board-id: '5f295471389a00455867bc20'
-          list-id-containing-completed-cards: 'hoge'
+          board-id: 'hoge'
+          list-id-containing-completed-cards: 'fuga'
           trello-api-key: ${{secrets.TRELLO_API_KEY}}
           trello-api-token: ${{secrets.TRELLO_API_TOKEN}}
+```
+
+## Develop
+
+Modify typescript files under src directory and run following command.
+```
+npx ncc build src/index.ts
 ```
