@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as TrelloApi from "./trello-api";
+import { ActionContext, createActionContext } from "./action-context";
 import log4js from "log4js";
 
 const logger = log4js.getLogger();
@@ -14,38 +15,11 @@ const resolveTrelloUrlFrom = (text?: string): Array<string> => {
   }
 };
 
-const createTrelloContext = (): TrelloApi.TrelloContext => {
-  const apiKey = process.env["TRELLO_API_KEY"];
-  const apiToken = process.env["TRELLO_API_TOKEN"];
-  const boardId = core.getInput("board-id");
-
-  if (!apiKey) {
-    throw new Error("TRELLO_API_KEY not defined");
-  }
-  if (!apiToken) {
-    throw new Error("TRELLO_API_TOKEN not defined");
-  }
-  if (!boardId) {
-    throw new Error("board-id not defined");
-  }
-  return {
-    apiKey,
-    apiToken,
-    boardId,
-  };
-};
-
 const attachPrToCard = async (
-  trelloContext: TrelloApi.TrelloContext,
+  context: ActionContext,
   trelloUrls: Array<string>,
   prUrl?: string
 ): Promise<void> => {
-  if (trelloUrls.length === 0) {
-    logger.info("target card not fount");
-    return;
-  }
-
-  logger.info(`target cards: ${trelloUrls}`);
   if (!prUrl) {
     throw new Error("pull-request url is not defined");
   }
@@ -56,7 +30,8 @@ const attachPrToCard = async (
         new Array(2))[1];
 
       const attachments = await TrelloApi.getAttachmentsOnACard(
-        trelloContext,
+        context.inputs.trelloApiKey,
+        context.inputs.trelloApiToken,
         cardId
       );
       if (attachments.findIndex((a) => a.url === prUrl) > -1) {
@@ -64,23 +39,22 @@ const attachPrToCard = async (
         logger.info(`skipped updating ${cardId}`);
       } else {
         logger.info(`attaching github url to card: ${cardId}`);
-        TrelloApi.createAttachmentOnCard(trelloContext, cardId, {url:prUrl});
+        TrelloApi.createAttachmentOnCard(
+          context.inputs.trelloApiKey,
+          context.inputs.trelloApiToken,
+          cardId,
+          { url: prUrl }
+        );
       }
     })
   );
 };
 
 const moveCard = async (
-  trelloContext: TrelloApi.TrelloContext,
+  context: ActionContext,
   trelloUrls: Array<string>,
   destListId: string
 ): Promise<void> => {
-  if (trelloUrls.length === 0) {
-    logger.info("target card not fount");
-    return;
-  }
-
-  logger.info(`target cards: ${trelloUrls}`);
   if (!destListId) {
     throw new Error("dest-list-id is not defined");
   }
@@ -89,35 +63,50 @@ const moveCard = async (
     trelloUrls.map(async (url) => {
       const cardId = (url.match(/https:\/\/trello\.com\/c\/(.*)/) ||
         new Array(2))[1];
-      TrelloApi.updateACard(trelloContext, cardId, {idList:destListId});
+      TrelloApi.updateACard(
+        context.inputs.trelloApiKey,
+        context.inputs.trelloApiToken,
+        cardId,
+        { idList: destListId }
+      );
     })
   );
 };
 
 try {
-  const targetActionName = core.getInput("target-action-name");
-  logger.info(`target action is ${targetActionName}`);
+  const context = createActionContext();
+  logger.info(`target action is ${context.inputs.targetActionName}`);
 
   if (github.context.payload.pull_request) {
-    switch (targetActionName) {
-      case "attach-pr-to-card":
-        attachPrToCard(
-          createTrelloContext(),
-          resolveTrelloUrlFrom(github.context.payload.pull_request.body),
-          github.context.payload.pull_request.html_url
-        );
-        break;
-      case "move-card":
-        moveCard(
-          createTrelloContext(),
-          resolveTrelloUrlFrom(github.context.payload.pull_request.body),
-          core.getInput("list-id-containing-completed-cards")
-        );
-        break;
-      default:
-        throw new Error(
-          `target action name cannot be resolved: ${targetActionName}`
-        );
+    const trelloUrls = resolveTrelloUrlFrom(
+      github.context.payload.pull_request.body
+    );
+
+    if (trelloUrls.length === 0) {
+      logger.info("target card not found.");
+    } else {
+      logger.info(`target cards: ${trelloUrls}`);
+
+      switch (context.inputs.targetActionName) {
+        case "attach-pr-to-card":
+          attachPrToCard(
+            context,
+            trelloUrls,
+            github.context.payload.pull_request.html_url
+          );
+          break;
+        case "move-card":
+          moveCard(
+            context,
+            trelloUrls,
+            core.getInput("list-id-containing-completed-cards")
+          );
+          break;
+        default:
+          throw new Error(
+            `target action name cannot be resolved: ${context.inputs.targetActionName}`
+          );
+      }
     }
   }
 } catch (error) {

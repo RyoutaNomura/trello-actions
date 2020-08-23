@@ -25,13 +25,14 @@ export interface Attachment {
 }
 
 export const getAttachmentsOnACard = async (
-  trelloContext: TrelloContext,
+  apiKey: string,
+  apiToken: string,
   id: string
 ): Promise<Array<Attachment>> => {
   const url = new URL(`https://trello.com/1/cards/${id}/attachments`);
   url.search = new URLSearchParams({
-    key: trelloContext.apiKey,
-    token: trelloContext.apiToken,
+    key: apiKey,
+    token: apiToken,
   }).toString();
 
   const response = await fetch(url);
@@ -44,7 +45,8 @@ export const getAttachmentsOnACard = async (
 };
 
 export const createAttachmentOnCard = async (
-  trelloContext: TrelloContext,
+  apiKey: string,
+  apiToken: string,
   id: string,
   params: {
     url: string;
@@ -55,8 +57,8 @@ export const createAttachmentOnCard = async (
   const response = await fetch(url, {
     method: "POST",
     body: new URLSearchParams({
-      key: trelloContext.apiKey,
-      token: trelloContext.apiToken,
+      key: apiKey,
+      token: apiToken,
       url: params.url,
     }),
   });
@@ -65,11 +67,12 @@ export const createAttachmentOnCard = async (
       `error occurred while updating ${id} with response: ${await response.text()}`
     );
   }
-  logger.info(`successfully updated ${id}`);
+  logger.info(`successfully create attachment to  ${id}`);
 };
 
 export const updateACard = async (
-  trelloContext: TrelloContext,
+  apiKey: string,
+  apiToken: string,
   id: string,
   params: {
     idList: string;
@@ -78,8 +81,8 @@ export const updateACard = async (
   const res = await fetch(`https://trello.com/1/cards/${id}`, {
     method: "PUT",
     body: new URLSearchParams({
-      key: trelloContext.apiKey,
-      token: trelloContext.apiToken,
+      key: apiKey,
+      token: apiToken,
       idList: params.idList,
       pos: "top",
     }),
