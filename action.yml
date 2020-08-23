@@ -2,7 +2,13 @@ name: "Trello Card Updater"
 description: "Update Trello Card according to Pull Request's Status"
 inputs:
   target-action-name:
-    description: 'action name for trello operation'
+    description: 'action name for trello operation(attach-pr-to-card | move-card)'
+    required: true
+  trello-api-key:
+    description: 'api key to access to trello api'
+    required: true
+  trello-api-token:
+    description: 'api token to access to trello api'
     required: true
   board-id:
     description: 'target trello bord id'
