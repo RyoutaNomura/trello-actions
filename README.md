@@ -72,6 +72,13 @@ jobs:
           trello-api-token: ${{secrets.TRELLO_API_TOKEN}}
 ```
 
+### note
+Github secret is not passed to the action triggered by `pull_request` when the pull request is created from a forked repository.
+
+To use Github's secret in pull requests created from forked repositories, use `pull_request_target` instead of `pull_request`.
+
+https://docs.github.com/en/actions/reference/events-that-trigger-workflows#pull_request_target
+
 ## Develop
 
 Modify typescript files under src directory and run following command.
